@@ -1,4 +1,4 @@
-FROM php:5.6-fpm
+FROM php:7.1-fpm
 
 ENV DRUSH_VERSION 8.1.2
 ENV APP_ROOT /var/www/html
@@ -26,8 +26,11 @@ apt-get install -y --no-install-recommends \
         --with-freetype-dir=/usr/include/freetype2 \
         --with-png-dir=/usr/include \
         --with-jpeg-dir=/usr/include && \
-    docker-php-ext-install gd pdo_mysql mysqli mysql opcache intl bcmath zip && \
-    docker-php-ext-enable bcmath zip pdo_mysql mysqli mysql
+    docker-php-ext-install gd pdo_mysql mysqli opcache intl bcmath zip && \
+    docker-php-ext-enable bcmath zip pdo_mysql mysqli
+
+# install memcached
+RUN pecl install memcached -y && docker-php-ext-enable memcached
 
 # Install Redis
 RUN pecl install redis -y && docker-php-ext-enable redis

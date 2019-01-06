@@ -1,7 +1,6 @@
 FROM php:7.2-fpm
 
-ENV DRUSH_VERSION 8.1.2
-ENV APP_ROOT /var/www/html
+ENV APP_ROOT /var/www
 
 RUN apt-get clean -y
 
@@ -35,9 +34,6 @@ RUN pecl install memcached -y && docker-php-ext-enable memcached
 # Install Redis
 RUN pecl install redis -y && docker-php-ext-enable redis
 
-# Install drush command
-RUN curl -fsSL -o /usr/local/bin/drush "https://github.com/drush-ops/drush/releases/download/$DRUSH_VERSION/drush.phar" && \
-    chmod +x /usr/local/bin/drush
 
 # Install composer
 RUN php -r "readfile('https://getcomposer.org/installer');" > composer-setup.php \

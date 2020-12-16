@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y \
     openssh-client \
     git-core \
     libzip-dev \
+    vim \
     libonig-dev
 
 # Install APCU

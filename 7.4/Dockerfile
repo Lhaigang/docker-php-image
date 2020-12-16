@@ -93,6 +93,9 @@ RUN pecl install mongodb \
 && echo "extension=mongodb.so" > /usr/local/etc/php/conf.d/ext-mongodb.ini \
 && php -m | grep -i mongo
 
+#安装 php-memcached 扩展
+RUN apt-get install -y libmemcached-dev zlib1g-dev && pecl install memcached && docker-php-ext-enable memcached
+
 # Generate locales
 RUN apt-get install locales -y
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen

@@ -2,39 +2,105 @@ FROM php:7.4-fpm
 
 ENV APP_ROOT /app/web
 
-# Install dependencies
+# Install general packages
 RUN apt-get update && apt-get install -y \
-        git zip unzip libpq-dev libzip-dev libpng-dev libfreetype6-dev libjpeg62-turbo-dev \
-    && docker-php-ext-install -j$(nproc) bcmath pdo_mysql pdo_pgsql gd zip exif \
-    && apt-get clean && apt-get autoclean
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libxpm-dev \
+    libvpx-dev \
+	libfreetype6-dev \
+	libjpeg62-turbo-dev \
+	libmcrypt-dev \
+	libcurl4-gnutls-dev \
+	pkg-config \
+	gcc \
+	make \
+	autoconf \
+	libc-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    librabbitmq-dev \
+    libssh-dev \
+    unzip \
+    default-mysql-client \
+    zlib1g-dev \
+    libicu-dev \
+    g++ \
+    wget \
+    gnupg \
+    software-properties-common \
+    openssh-client \
+    git-core \
+    libzip-dev \
+    libonig-dev
 
-# 1.0.5 增加 GD 扩展. 图像处理
-RUN apt-get update && \
-apt-get install -y --no-install-recommends libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
-rm -r /var/lib/apt/lists/* && \
-docker-php-ext-configure gd --with-freetype-dir=/usr/include/ --with-jpeg-dir=/usr/include/ && \
-docker-php-ext-install -j$(nproc) gd
+# Install APCU
+ADD https://pecl.php.net/get/apcu-5.1.17.tgz /tmp/apcu.tar.gz
+RUN mkdir -p /usr/src/php/ext/apcu\
+  && tar xf /tmp/apcu.tar.gz -C /usr/src/php/ext/apcu --strip-components=1
 
-# 1.0.8 增加 zip 扩展
-RUN apt-get update && \
-apt-get install -y --no-install-recommends libzip-dev && \
-rm -r /var/lib/apt/lists/* && \
-docker-php-ext-install -j$(nproc) zip
+RUN docker-php-ext-configure apcu\
+  && docker-php-ext-install apcu
 
-RUN apt-get update && \
-apt-get install -y --no-install-recommends libmcrypt-dev && \
-rm -r /var/lib/apt/lists/* && \
-pecl install mcrypt-1.0.1 && \
-docker-php-ext-enable mcrypt
+RUN rm -rd /usr/src/php/ext/apcu && rm /tmp/apcu.tar.gz
 
-# 1.0.22 redis 扩展
-RUN pecl install redis-4.0.1 && docker-php-ext-enable redis
+ADD https://pecl.php.net/get/apcu_bc-1.0.3.tgz /tmp/apcu_bc.tar.gz
+RUN mkdir -p /usr/src/php/ext/apcu-bc\
+  && tar xf /tmp/apcu_bc.tar.gz -C /usr/src/php/ext/apcu-bc --strip-components=1
 
-ENV COMPOSER_VERSION 2.0.7
+RUN docker-php-ext-configure apcu-bc\
+  && docker-php-ext-install apcu-bc
+
+RUN rm -rd /usr/src/php/ext/apcu-bc && rm /tmp/apcu_bc.tar.gz
+
+RUN rm /usr/local/etc/php/conf.d/docker-php-ext-apcu.ini
+RUN echo extension=apcu.so > /usr/local/etc/php/conf.d/20-php-ext-apcu.ini
+
+# Install APC
+RUN rm /usr/local/etc/php/conf.d/docker-php-ext-apc.ini
+RUN echo extension=apc.so > /usr/local/etc/php/conf.d/21-php-ext-apc.ini
+
+# Install Redis
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Install other extensions
+RUN docker-php-ext-install bcmath
+
+RUN docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/
+
+RUN docker-php-ext-install gd
+RUN docker-php-ext-install intl
+RUN docker-php-ext-install pdo_mysql
+RUN docker-php-ext-install mysqli
+RUN docker-php-ext-install curl
+RUN docker-php-ext-install opcache
+RUN docker-php-ext-install zip
+RUN docker-php-ext-install xml
+RUN docker-php-ext-install json
+RUN docker-php-ext-install mbstring
+RUN docker-php-ext-install sockets
+RUN docker-php-ext-install exif
+RUN docker-php-ext-install xsl
+
+# Install AMPQP support
+RUN pecl install amqp \
+&& docker-php-ext-enable amqp
+
+# Install MongoDB extension
+RUN pecl install mongodb \
+&& echo "extension=mongodb.so" > /usr/local/etc/php/conf.d/ext-mongodb.ini \
+&& php -m | grep -i mongo
+
+# Generate locales
+RUN apt-get install locales -y
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
+RUN echo "en_GB.UTF-8 UTF-8" >> /etc/locale.gen
+RUN echo "cs_CZ.UTF-8 UTF-8" >> /etc/locale.gen
+RUN locale-gen
 
 # Install composer
-RUN curl -sS https://getcomposer.org/download/$COMPOSER_VERSION/composer.phar -o /usr/local/bin/composer \
-    && chmod +x /usr/local/bin/composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 # config china mirror
 RUN composer config -g repo.packagist composer https://mirrors.aliyun.com/composer/
 
@@ -48,6 +114,7 @@ RUN curl -fsSLO --compressed "https://github.com/edenhill/librdkafka/archive/v0.
   && make install \
   && rm -rf /tmp/librdkafka-0.11.6 \
   && pecl install rdkafka
+
 
 # add timezone
 RUN echo 'date.timezone = Asia/Shanghai' >> /usr/local/etc/php/conf.d/docker-php-data-time.ini
